@@ -1,0 +1,43 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_IMAGE = "firasathmohammed/node-app"
+        KUBECONFIG_CREDENTIALS_ID = "kubeconfig"
+        DOCKERHUB_CREDENTIALS_ID = "dockerhub"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'master', url: 'https://github.com/MohammedFirasath/Project.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    docker.build(DOCKER_IMAGE)
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    docker.withRegistry('', DOCKERHUB_CREDENTIALS_ID) {
+                        docker.image(DOCKER_IMAGE).push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                withCredentials([file(credentialsId: KUBECONFIG_CREDENTIALS_ID, variable: 'KUBECONFIG')]) {
+                    sh 'kubectl apply -f k8s/'
+                }
+            }
+        }
+    }
+}
